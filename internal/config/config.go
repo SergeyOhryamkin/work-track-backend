@@ -12,6 +12,7 @@ type Config struct {
 	Database DatabaseConfig
 	JWT      JWTConfig
 	CORS     CORSConfig
+	S3       S3Config
 }
 
 // ServerConfig holds server-related configuration
@@ -35,6 +36,16 @@ type CORSConfig struct {
 	AllowedOrigins []string
 }
 
+// S3Config holds S3-related configuration
+type S3Config struct {
+	Endpoint  string
+	Bucket    string
+	AccessKey string
+	SecretKey string
+	Region    string
+	Prefix    string
+}
+
 // Load reads configuration from environment variables
 func Load() (*Config, error) {
 	allowedOrigins := strings.Split(getEnv("ALLOWED_ORIGINS", "http://localhost:3000"), ",")
@@ -55,6 +66,14 @@ func Load() (*Config, error) {
 		},
 		CORS: CORSConfig{
 			AllowedOrigins: allowedOrigins,
+		},
+		S3: S3Config{
+			Endpoint:  getEnv("S3_ENDPOINT", ""),
+			Bucket:    getEnv("S3_BUCKET", ""),
+			AccessKey: getEnv("S3_ACCESS_KEY", ""),
+			SecretKey: getEnv("S3_SECRET_KEY", ""),
+			Region:    getEnv("S3_REGION", ""),
+			Prefix:    getEnv("S3_PREFIX", ""),
 		},
 	}
 
