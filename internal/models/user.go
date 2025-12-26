@@ -30,6 +30,12 @@ type UserLogin struct {
 
 // AuthResponse represents the response after successful authentication
 type AuthResponse struct {
-	Token string `json:"token"`
-	User  User   `json:"user"`
+	Token     string `json:"token"`
+	User      User   `json:"user"`
+	SessionID int    `json:"session_id,omitempty"`
+}
+
+// LogoutRequest represents logout payload
+type LogoutRequest struct {
+	SessionID int `json:"session_id"`
 }

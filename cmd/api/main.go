@@ -46,9 +46,10 @@ func main() {
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
 	trackItemRepo := repository.NewTrackItemRepository(db)
+	sessionRepo := repository.NewUserSessionRepository(db)
 
 	// Initialize services
-	authService := service.NewAuthService(userRepo, cfg.JWT.Secret)
+	authService := service.NewAuthService(userRepo, sessionRepo, cfg.JWT.Secret)
 	trackItemService := service.NewTrackItemService(trackItemRepo)
 
 	// Initialize handlers
@@ -70,10 +71,17 @@ func main() {
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {
-		// Auth routes (public)
+		// Auth routes
 		r.Route("/auth", func(r chi.Router) {
+			// Public routes
 			r.Post("/register", authHandler.Register)
 			r.Post("/login", authHandler.Login)
+
+			// Protected routes
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
+				r.Post("/logout", authHandler.Logout)
+			})
 		})
 
 		// Track item routes (protected)
