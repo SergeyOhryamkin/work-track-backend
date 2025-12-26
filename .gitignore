@@ -23,6 +23,8 @@ go.work
 .env.local
 .env.*.local
 *.env
+passwords
+passwords.txt
 
 # IDE
 .vscode/
