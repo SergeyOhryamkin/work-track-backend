@@ -36,9 +36,16 @@ func NewPostgresPool(ctx context.Context, connString string) (*pgxpool.Pool, err
 	return pool, nil
 }
 
-// Close closes the database connection pool
-func Close(pool *pgxpool.Pool) {
-	if pool != nil {
-		pool.Close()
+// Close closes the database connection
+func Close(db interface{}) {
+	switch v := db.(type) {
+	case *pgxpool.Pool:
+		if v != nil {
+			v.Close()
+		}
+	case interface{ Close() error }:
+		if v != nil {
+			v.Close()
+		}
 	}
 }

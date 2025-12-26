@@ -29,10 +29,6 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Create context for graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// Connect to database
 	db, err := database.NewSQLiteDB(cfg.Database.ConnectionString())
 	if err != nil {
