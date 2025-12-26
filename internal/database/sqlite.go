@@ -47,3 +47,10 @@ func NewSQLiteDB(dbPath string) (*sql.DB, error) {
 
 	return db, nil
 }
+
+// Close closes the database connection
+func Close(db *sql.DB) {
+	if db != nil {
+		db.Close()
+	}
+}
