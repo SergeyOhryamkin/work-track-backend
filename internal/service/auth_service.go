@@ -37,10 +37,6 @@ func (s *AuthService) Register(ctx context.Context, req *models.UserRegistration
 		return nil, errors.New("login and password are required")
 	}
 
-	if req.FirstName == "" || req.LastName == "" {
-		return nil, errors.New("first name and last name are required")
-	}
-
 	if len(req.Password) < 6 {
 		return nil, errors.New("password must be at least 6 characters")
 	}
@@ -53,9 +49,6 @@ func (s *AuthService) Register(ctx context.Context, req *models.UserRegistration
 
 	// Create user
 	user := &models.User{
-		FirstName:    req.FirstName,
-		LastName:     req.LastName,
-		Avatar:       req.Avatar,
 		Login:        req.Login,
 		PasswordHash: hashedPassword,
 	}

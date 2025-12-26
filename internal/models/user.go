@@ -18,11 +18,8 @@ type User struct {
 
 // UserRegistration represents the data needed to register a new user
 type UserRegistration struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Login     string `json:"login"`
-	Password  string `json:"password"`
-	Avatar    string `json:"avatar,omitempty"`
+	Login    string `json:"login"`
+	Password string `json:"password"`
 }
 
 // UserLogin represents the data needed to log in

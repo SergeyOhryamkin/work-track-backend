@@ -32,7 +32,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.authService.Register(r.Context(), &req)
 	if err != nil {
 		if errors.Is(err, service.ErrEmailAlreadyExists) {
-			respondWithError(w, http.StatusConflict, "Email already exists")
+			respondWithError(w, http.StatusConflict, "Login already exists")
 			return
 		}
 		respondWithError(w, http.StatusInternalServerError, err.Error())
