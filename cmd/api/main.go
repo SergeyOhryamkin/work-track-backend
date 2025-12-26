@@ -38,6 +38,11 @@ func main() {
 
 	log.Println("Successfully connected to database")
 
+	// Run migrations
+	if err := database.RunMigrations(db, "migrations"); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
 	trackItemRepo := repository.NewTrackItemRepository(db)
