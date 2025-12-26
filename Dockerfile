@@ -3,8 +3,8 @@ FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache git
+# Install build dependencies (gcc, musl-dev needed for SQLite)
+RUN apk add --no-cache git gcc musl-dev
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -13,13 +13,14 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api
+# Build the application with CGO enabled for SQLite
+RUN CGO_ENABLED=1 GOOS=linux go build -a -o main ./cmd/api
 
 # Runtime stage
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates
+# Install runtime dependencies for SQLite
+RUN apk --no-cache add ca-certificates sqlite-libs
 
 WORKDIR /root/
 

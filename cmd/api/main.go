@@ -34,7 +34,7 @@ func main() {
 	defer cancel()
 
 	// Connect to database
-	db, err := database.NewPostgresPool(ctx, cfg.Database.ConnectionString())
+	db, err := database.NewSQLiteDB(cfg.Database.ConnectionString())
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}

@@ -23,12 +23,7 @@ type ServerConfig struct {
 
 // DatabaseConfig holds database connection configuration
 type DatabaseConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	DBName   string
-	SSLMode  string
+	Path string // SQLite database file path
 }
 
 // JWTConfig holds JWT-related configuration
@@ -43,11 +38,6 @@ type CORSConfig struct {
 
 // Load reads configuration from environment variables
 func Load() (*Config, error) {
-	dbPort, err := strconv.Atoi(getEnv("DB_PORT", "5432"))
-	if err != nil {
-		return nil, fmt.Errorf("invalid DB_PORT: %w", err)
-	}
-
 	allowedOrigins := strings.Split(getEnv("ALLOWED_ORIGINS", "http://localhost:3000"), ",")
 	for i := range allowedOrigins {
 		allowedOrigins[i] = strings.TrimSpace(allowedOrigins[i])
@@ -59,12 +49,7 @@ func Load() (*Config, error) {
 			Env:  getEnv("ENV", "development"),
 		},
 		Database: DatabaseConfig{
-			Host:     getEnv("DB_HOST", "localhost"),
-			Port:     dbPort,
-			User:     getEnv("DB_USER", "postgres"),
-			Password: getEnv("DB_PASSWORD", "postgres"),
-			DBName:   getEnv("DB_NAME", "worktrack"),
-			SSLMode:  getEnv("DB_SSLMODE", "disable"),
+			Path: getEnv("DB_PATH", "./worktrack.db"),
 		},
 		JWT: JWTConfig{
 			Secret: getEnv("JWT_SECRET", ""),
@@ -90,10 +75,7 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-// ConnectionString returns the PostgreSQL connection string
+// ConnectionString returns the SQLite connection string
 func (c *DatabaseConfig) ConnectionString() string {
-	return fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		c.Host, c.Port, c.User, c.Password, c.DBName, c.SSLMode,
-	)
+	return c.Path
 }

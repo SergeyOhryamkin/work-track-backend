@@ -2,11 +2,11 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sergey/work-track-backend/internal/models"
 )
 
@@ -17,11 +17,11 @@ var (
 
 // UserRepository handles database operations for users
 type UserRepository struct {
-	db *pgxpool.Pool
+	db *sql.DB
 }
 
 // NewUserRepository creates a new user repository
-func NewUserRepository(db *pgxpool.Pool) *UserRepository {
+func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
@@ -29,20 +29,27 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 	query := `
 		INSERT INTO users (first_name, last_name, avatar, login, password_hash, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-		RETURNING id, created_at, updated_at
+		VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
 	`
 
-	err := r.db.QueryRow(ctx, query, user.FirstName, user.LastName, user.Avatar, user.Login, user.PasswordHash).
-		Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
-
+	result, err := r.db.ExecContext(ctx, query, user.FirstName, user.LastName, user.Avatar, user.Login, user.PasswordHash)
 	if err != nil {
 		// Check for unique constraint violation
-		if err.Error() == "ERROR: duplicate key value violates unique constraint \"users_email_key\" (SQLSTATE 23505)" {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return ErrUserAlreadyExists
 		}
 		return fmt.Errorf("failed to create user: %w", err)
 	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("failed to get last insert id: %w", err)
+	}
+	user.ID = int(id)
+
+	// Fetch created_at and updated_at
+	err = r.db.QueryRowContext(ctx, "SELECT created_at, updated_at FROM users WHERE id = ?", user.ID).
+		Scan(&user.CreatedAt, &user.UpdatedAt)
 
 	return nil
 }
@@ -52,18 +59,18 @@ func (r *UserRepository) FindByLogin(ctx context.Context, login string) (*models
 	query := `
 		SELECT id, first_name, last_name, avatar, login, password_hash, created_at, updated_at
 		FROM users
-		WHERE login = $1
+		WHERE login = ?
 	`
 
 	var user models.User
-	err := r.db.QueryRow(ctx, query, login).
+	err := r.db.QueryRowContext(ctx, query, login).
 		Scan(&user.ID, &user.FirstName, &user.LastName, &user.Avatar, &user.Login, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrUserNotFound
 		}
-		return nil, fmt.Errorf("failed to find user by email: %w", err)
+		return nil, fmt.Errorf("failed to find user by login: %w", err)
 	}
 
 	return &user, nil
@@ -74,15 +81,15 @@ func (r *UserRepository) FindByID(ctx context.Context, id int) (*models.User, er
 	query := `
 		SELECT id, first_name, last_name, avatar, login, password_hash, created_at, updated_at
 		FROM users
-		WHERE id = $1
+		WHERE id = ?
 	`
 
 	var user models.User
-	err := r.db.QueryRow(ctx, query, id).
+	err := r.db.QueryRowContext(ctx, query, id).
 		Scan(&user.ID, &user.FirstName, &user.LastName, &user.Avatar, &user.Login, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to find user by ID: %w", err)

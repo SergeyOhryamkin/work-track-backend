@@ -2,12 +2,11 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sergey/work-track-backend/internal/models"
 )
 
@@ -17,11 +16,11 @@ var (
 
 // TrackItemRepository handles database operations for track items
 type TrackItemRepository struct {
-	db *pgxpool.Pool
+	db *sql.DB
 }
 
 // NewTrackItemRepository creates a new track item repository
-func NewTrackItemRepository(db *pgxpool.Pool) *TrackItemRepository {
+func NewTrackItemRepository(db *sql.DB) *TrackItemRepository {
 	return &TrackItemRepository{db: db}
 }
 
@@ -29,18 +28,24 @@ func NewTrackItemRepository(db *pgxpool.Pool) *TrackItemRepository {
 func (r *TrackItemRepository) Create(ctx context.Context, item *models.TrackItem) error {
 	query := `
 		INSERT INTO track_items (user_id, type, emergency_call, holiday_call, working_hours, working_shifts, date, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
-		RETURNING id, created_at, updated_at
+		VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
 	`
 
-	err := r.db.QueryRow(ctx, query, item.UserID, item.Type, item.EmergencyCall, item.HolidayCall, item.WorkingHours, item.WorkingShifts, item.Date).
-		Scan(&item.ID, &item.CreatedAt, &item.UpdatedAt)
-
+	result, err := r.db.ExecContext(ctx, query, item.UserID, item.Type, item.EmergencyCall, item.HolidayCall, item.WorkingHours, item.WorkingShifts, item.Date)
 	if err != nil {
 		return fmt.Errorf("failed to create track item: %w", err)
 	}
 
-	return nil
+	id, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("failed to get last insert id: %w", err)
+	}
+	item.ID = int(id)
+
+	err = r.db.QueryRowContext(ctx, "SELECT created_at, updated_at FROM track_items WHERE id = ?", item.ID).
+		Scan(&item.CreatedAt, &item.UpdatedAt)
+
+	return err
 }
 
 // FindByUserID retrieves all track items for a specific user
@@ -48,11 +53,11 @@ func (r *TrackItemRepository) FindByUserID(ctx context.Context, userID int) ([]m
 	query := `
 		SELECT id, user_id, type, emergency_call, holiday_call, working_hours, working_shifts, date, created_at, updated_at
 		FROM track_items
-		WHERE user_id = $1
+		WHERE user_id = ?
 		ORDER BY date DESC
 	`
 
-	rows, err := r.db.Query(ctx, query, userID)
+	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query track items: %w", err)
 	}
@@ -91,11 +96,11 @@ func (r *TrackItemRepository) FindByDateRange(ctx context.Context, userID int, s
 	query := `
 		SELECT id, user_id, type, emergency_call, holiday_call, working_hours, working_shifts, date, created_at, updated_at
 		FROM track_items
-		WHERE user_id = $1 AND date >= $2 AND date <= $3
+		WHERE user_id = ? AND date >= ? AND date <= ?
 		ORDER BY date DESC
 	`
 
-	rows, err := r.db.Query(ctx, query, userID, startDate, endDate)
+	rows, err := r.db.QueryContext(ctx, query, userID, startDate, endDate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query track items by date range: %w", err)
 	}
@@ -134,15 +139,15 @@ func (r *TrackItemRepository) FindByID(ctx context.Context, id int) (*models.Tra
 	query := `
 		SELECT id, user_id, type, emergency_call, holiday_call, working_hours, working_shifts, date, created_at, updated_at
 		FROM track_items
-		WHERE id = $1
+		WHERE id = ?
 	`
 
 	var item models.TrackItem
-	err := r.db.QueryRow(ctx, query, id).
+	err := r.db.QueryRowContext(ctx, query, id).
 		Scan(&item.ID, &item.UserID, &item.Type, &item.EmergencyCall, &item.HolidayCall, &item.WorkingHours, &item.WorkingShifts, &item.Date, &item.CreatedAt, &item.UpdatedAt)
 
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrTrackItemNotFound
 		}
 		return nil, fmt.Errorf("failed to find track item: %w", err)
@@ -155,34 +160,43 @@ func (r *TrackItemRepository) FindByID(ctx context.Context, id int) (*models.Tra
 func (r *TrackItemRepository) Update(ctx context.Context, item *models.TrackItem) error {
 	query := `
 		UPDATE track_items
-		SET type = $1, emergency_call = $2, holiday_call = $3, working_hours = $4, working_shifts = $5, date = $6, updated_at = NOW()
-		WHERE id = $7
-		RETURNING updated_at
+		SET type = ?, emergency_call = ?, holiday_call = ?, working_hours = ?, working_shifts = ?, date = ?, updated_at = datetime('now')
+		WHERE id = ?
 	`
 
-	err := r.db.QueryRow(ctx, query, item.Type, item.EmergencyCall, item.HolidayCall, item.WorkingHours, item.WorkingShifts, item.Date, item.ID).
-		Scan(&item.UpdatedAt)
-
+	result, err := r.db.ExecContext(ctx, query, item.Type, item.EmergencyCall, item.HolidayCall, item.WorkingHours, item.WorkingShifts, item.Date, item.ID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrTrackItemNotFound
-		}
 		return fmt.Errorf("failed to update track item: %w", err)
 	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrTrackItemNotFound
+	}
+
+	err = r.db.QueryRowContext(ctx, "SELECT updated_at FROM track_items WHERE id = ?", item.ID).
+		Scan(&item.UpdatedAt)
 
 	return nil
 }
 
 // Delete removes a track item from the database
 func (r *TrackItemRepository) Delete(ctx context.Context, id int) error {
-	query := `DELETE FROM track_items WHERE id = $1`
+	query := `DELETE FROM track_items WHERE id = ?`
 
-	result, err := r.db.Exec(ctx, query, id)
+	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete track item: %w", err)
 	}
 
-	if result.RowsAffected() == 0 {
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rows == 0 {
 		return ErrTrackItemNotFound
 	}
 
