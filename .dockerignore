@@ -1,0 +1,28 @@
+# Documentation
+*.md
+docs/
+
+# Development files
+.env
+.env.*
+.git
+.gitignore
+.vscode
+.idea
+
+# Test files
+*_test.go
+testdata/
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+main
+
+# Temporary files
+*.swp
+*.swo
+*~
+.DS_Store
