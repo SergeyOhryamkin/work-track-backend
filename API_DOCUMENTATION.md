@@ -10,10 +10,12 @@ http://localhost:8080/api
 ## Auth Basics
 - JWT is returned on register/login.
 - Send on protected routes: `Authorization: Bearer <token>`.
+- Sessions are automatically tracked with device, platform, and IP information.
 
 ## Endpoints
 
 ### Auth
+
 **POST** `/auth/register`
 - Body:
 ```json
@@ -22,6 +24,7 @@ http://localhost:8080/api
   "password": "secret123"
 }
 ```
+- Session metadata is automatically captured from request headers (User-Agent, IP address).
 - Responses:
   - `201 Created`
   ```json
@@ -35,7 +38,8 @@ http://localhost:8080/api
       "avatar": "",
       "created_at": "2024-01-20T10:00:00Z",
       "updated_at": "2024-01-20T10:00:00Z"
-    }
+    },
+    "session_id": 1
   }
   ```
   - `409 Conflict` if login already exists.
@@ -46,9 +50,61 @@ http://localhost:8080/api
 ```json
 { "login": "johndoe", "password": "secret123" }
 ```
+- Session metadata is automatically captured from request headers.
 - Responses:
-  - `200 OK` with the same shape as register.
+  - `200 OK`
+  ```json
+  {
+    "token": "<access_jwt>",
+    "refresh_token": "<refresh_jwt>",
+    "user": {
+      "id": 1,
+      "login": "johndoe",
+      ...
+    },
+    "session_id": 2
+  }
+  ```
   - `401 Unauthorized` if credentials are wrong.
+
+**POST** `/auth/refresh`
+- Body:
+```json
+{
+  "refresh_token": "<refresh_jwt>"
+}
+```
+- Exchanges a valid refresh token for a new access token and a new refresh token.
+- Responses:
+  - `200 OK`
+  ```json
+  {
+    "token": "<new_access_jwt>",
+    "refresh_token": "<new_refresh_jwt>",
+    "user": { ... },
+    "session_id": 2
+  }
+  ```
+  - `401 Unauthorized` if refresh token is invalid, expired, or session is closed.
+
+**POST** `/auth/logout` (Protected)
+- Requires: `Authorization: Bearer <token>`
+- Body:
+```json
+{
+  "session_id": 1
+}
+```
+- Completes the session by recording logout time and calculating session duration.
+- Responses:
+  - `200 OK`
+  ```json
+  {
+    "message": "Logged out successfully"
+  }
+  ```
+  - `404 Not Found` if session doesn't exist or already closed.
+  - `401 Unauthorized` if token is missing or invalid.
 
 ### Track Items (all require `Authorization: Bearer <token>`)
 
@@ -143,20 +199,31 @@ http://localhost:8080/api
 
 ## curl Quickstart
 ```bash
-# register
-curl -X POST http://localhost:8080/api/auth/register \
+# register (returns token and session_id)
+RESPONSE=$(curl -s -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"first_name":"John","last_name":"Doe","login":"johndoe","password":"secret123"}'
+  -d '{"login":"johndoe","password":"secret123"}')
 
-# login
-TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+TOKEN=$(echo $RESPONSE | jq -r .token)
+SESSION_ID=$(echo $RESPONSE | jq -r .session_id)
+
+# login (creates a new session)
+RESPONSE=$(curl -s -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"login":"johndoe","password":"secret123"}' | jq -r .token)
+  -d '{"login":"johndoe","password":"secret123"}')
+
+TOKEN=$(echo $RESPONSE | jq -r .token)
+SESSION_ID=$(echo $RESPONSE | jq -r .session_id)
 
 # create track item
 curl -X POST http://localhost:8080/api/track-items \
   -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
   -d '{"type":"regular","emergency_call":false,"holiday_call":false,"working_hours":8,"working_shifts":1,"date":"2024-01-20T09:00:00Z"}'
+
+# logout (completes the session)
+curl -X POST http://localhost:8080/api/auth/logout \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -d "{\"session_id\":$SESSION_ID}"
 ```
 
 ## Minimal Frontend (fetch)
@@ -170,7 +237,7 @@ async function register(payload) {
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw await res.json();
-  return res.json();
+  return res.json(); // { token, user, session_id }
 }
 
 async function login(payload) {
@@ -180,7 +247,20 @@ async function login(payload) {
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw await res.json();
-  return res.json();
+  return res.json(); // { token, user, session_id }
+}
+
+async function logout(token, sessionId) {
+  const res = await fetch(`${BASE}/auth/logout`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ session_id: sessionId }),
+  });
+  if (!res.ok) throw await res.json();
+  return res.json(); // { message: "Logged out successfully" }
 }
 
 async function listTrackItems(token, range) {
@@ -198,3 +278,11 @@ async function listTrackItems(token, range) {
 - Dates: send RFC3339 for `date` (`2024-01-20T09:00:00Z`). Date-range queries use `YYYY-MM-DD`.
 - Ownership: all track-item routes are scoped to the authenticated user; 403 is returned if accessing another user’s item.
 - Config: set `JWT_SECRET` and `DB_PATH` (.env). Default DB is SQLite file.
+- Session Tracking: Every login/register creates a session record with:
+  - Device type (mobile, tablet, desktop)
+  - Platform (ios, android, windows, macos, linux, web)
+  - User agent string
+  - IP address (handles X-Forwarded-For and X-Real-IP headers)
+  - Login timestamp
+  - Logout timestamp and session duration (calculated on logout)
+- Session ID: Save the `session_id` returned from login/register to use when calling logout.

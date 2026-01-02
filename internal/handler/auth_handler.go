@@ -70,6 +70,36 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, resp)
 }
 
+// Refresh handles token refresh requests
+func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
+	var req models.RefreshRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.RefreshToken == "" {
+		respondWithError(w, http.StatusBadRequest, "Refresh token is required")
+		return
+	}
+
+	resp, err := h.authService.RefreshToken(r.Context(), req.RefreshToken)
+	if err != nil {
+		if errors.Is(err, service.ErrUnauthorized) {
+			respondWithError(w, http.StatusUnauthorized, "Invalid or expired refresh token")
+			return
+		}
+		if errors.Is(err, service.ErrSessionNotFound) {
+			respondWithError(w, http.StatusUnauthorized, "Session not found or already closed")
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, resp)
+}
+
 // Logout handles user logout
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by auth middleware)

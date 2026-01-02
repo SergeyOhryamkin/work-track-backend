@@ -1,0 +1,5 @@
+-- Migration to remove refresh_token from user_sessions table
+-- SQLite doesn't support DROP COLUMN in older versions easily.
+-- For now, we'll leave it as a no-op or comment.
+-- In standard SQL:
+-- ALTER TABLE user_sessions DROP COLUMN refresh_token;

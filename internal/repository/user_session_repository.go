@@ -27,8 +27,8 @@ func NewUserSessionRepository(db *sql.DB) *UserSessionRepository {
 // Create inserts a new session record and returns the session ID
 func (r *UserSessionRepository) Create(ctx context.Context, session *models.UserSession) (int, error) {
 	query := `
-		INSERT INTO user_sessions (user_id, device, platform, user_agent, ip_address)
-		VALUES (?, ?, ?, ?, ?)
+		INSERT INTO user_sessions (user_id, device, platform, user_agent, ip_address, refresh_token)
+		VALUES (?, ?, ?, ?, ?, ?)
 	`
 
 	result, err := r.db.ExecContext(ctx, query,
@@ -37,6 +37,7 @@ func (r *UserSessionRepository) Create(ctx context.Context, session *models.User
 		session.Platform,
 		session.UserAgent,
 		session.IPAddress,
+		session.RefreshToken,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create session: %w", err)
@@ -62,7 +63,48 @@ func (r *UserSessionRepository) Create(ctx context.Context, session *models.User
 	return session.ID, nil
 }
 
-// Complete closes an active session, recording logout timestamp and duration
+// FindByRefreshToken retrieves a session by its refresh token
+func (r *UserSessionRepository) FindByRefreshToken(ctx context.Context, token string) (*models.UserSession, error) {
+	query := `
+		SELECT id, user_id, login_at, logout_at, refresh_token, device, platform, user_agent,
+		       ip_address, session_duration_seconds, created_at
+		FROM user_sessions
+		WHERE refresh_token = ? AND logout_at IS NULL
+	`
+
+	var session models.UserSession
+	err := r.db.QueryRowContext(ctx, query, token).Scan(
+		&session.ID,
+		&session.UserID,
+		&session.LoginAt,
+		&session.LogoutAt,
+		&session.RefreshToken,
+		&session.Device,
+		&session.Platform,
+		&session.UserAgent,
+		&session.IPAddress,
+		&session.SessionDurationSeconds,
+		&session.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrSessionNotFound
+		}
+		return nil, fmt.Errorf("failed to find session by refresh token: %w", err)
+	}
+
+	return &session, nil
+}
+
+// UpdateRefreshToken updates the refresh token for a session
+func (r *UserSessionRepository) UpdateRefreshToken(ctx context.Context, sessionID int, token string) error {
+	query := `UPDATE user_sessions SET refresh_token = ? WHERE id = ?`
+	_, err := r.db.ExecContext(ctx, query, token, sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to update refresh token: %w", err)
+	}
+	return nil
+}
 func (r *UserSessionRepository) Complete(ctx context.Context, sessionID, userID int) (*models.UserSession, error) {
 	query := `
 		UPDATE user_sessions

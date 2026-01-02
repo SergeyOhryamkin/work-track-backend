@@ -1,0 +1,7 @@
+-- Migration to remove subtype and inbound_rule from track_items table
+-- SQLite doesn't support DROP COLUMN in older versions, but for simple migrations we can just try or use a table recreation if needed.
+-- However, for simple ALTER TABLE ADD, we usually just leave it or use a more complex migration if rollback is critical.
+-- For now, let's just use a comment or a no-op if DROP COLUMN is risky in this environment.
+-- In standard SQL:
+-- ALTER TABLE track_items DROP COLUMN subtype;
+-- ALTER TABLE track_items DROP COLUMN inbound_rule;

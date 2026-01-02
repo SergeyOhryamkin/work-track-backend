@@ -5,6 +5,10 @@
 *.so
 *.dylib
 
+*.md
+!README.md
+!LICENSE.md
+
 # Test binary, built with `go test -c`
 *.test
 

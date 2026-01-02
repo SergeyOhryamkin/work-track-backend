@@ -76,6 +76,7 @@ func main() {
 			// Public routes
 			r.Post("/register", authHandler.Register)
 			r.Post("/login", authHandler.Login)
+			r.Post("/refresh", authHandler.Refresh)
 
 			// Protected routes
 			r.Group(func(r chi.Router) {

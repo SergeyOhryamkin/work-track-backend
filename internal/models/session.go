@@ -8,6 +8,7 @@ type UserSession struct {
 	UserID                 int        `json:"user_id"`
 	LoginAt                time.Time  `json:"login_at"`
 	LogoutAt               *time.Time `json:"logout_at,omitempty"`
+	RefreshToken           string     `json:"refresh_token,omitempty"`
 	Device                 string     `json:"device,omitempty"`
 	Platform               string     `json:"platform,omitempty"`
 	UserAgent              string     `json:"user_agent,omitempty"`

@@ -27,11 +27,11 @@ func NewTrackItemRepository(db *sql.DB) *TrackItemRepository {
 // Create inserts a new track item into the database
 func (r *TrackItemRepository) Create(ctx context.Context, item *models.TrackItem) error {
 	query := `
-		INSERT INTO track_items (user_id, type, emergency_call, holiday_call, working_hours, working_shifts, date, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+		INSERT INTO track_items (user_id, type, subtype, inbound_rule, emergency_call, holiday_call, working_hours, working_shifts, date, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
 	`
 
-	result, err := r.db.ExecContext(ctx, query, item.UserID, item.Type, item.EmergencyCall, item.HolidayCall, item.WorkingHours, item.WorkingShifts, item.Date)
+	result, err := r.db.ExecContext(ctx, query, item.UserID, item.Type, item.Subtype, item.InboundRule, item.EmergencyCall, item.HolidayCall, item.WorkingHours, item.WorkingShifts, item.Date)
 	if err != nil {
 		return fmt.Errorf("failed to create track item: %w", err)
 	}
@@ -51,7 +51,7 @@ func (r *TrackItemRepository) Create(ctx context.Context, item *models.TrackItem
 // FindByUserID retrieves all track items for a specific user
 func (r *TrackItemRepository) FindByUserID(ctx context.Context, userID int) ([]models.TrackItem, error) {
 	query := `
-		SELECT id, user_id, type, emergency_call, holiday_call, working_hours, working_shifts, date, created_at, updated_at
+		SELECT id, user_id, type, subtype, inbound_rule, emergency_call, holiday_call, working_hours, working_shifts, date, created_at, updated_at
 		FROM track_items
 		WHERE user_id = ?
 		ORDER BY date DESC
@@ -70,6 +70,8 @@ func (r *TrackItemRepository) FindByUserID(ctx context.Context, userID int) ([]m
 			&item.ID,
 			&item.UserID,
 			&item.Type,
+			&item.Subtype,
+			&item.InboundRule,
 			&item.EmergencyCall,
 			&item.HolidayCall,
 			&item.WorkingHours,
@@ -94,7 +96,7 @@ func (r *TrackItemRepository) FindByUserID(ctx context.Context, userID int) ([]m
 // FindByDateRange retrieves track items for a user within a date range
 func (r *TrackItemRepository) FindByDateRange(ctx context.Context, userID int, startDate, endDate time.Time) ([]models.TrackItem, error) {
 	query := `
-		SELECT id, user_id, type, emergency_call, holiday_call, working_hours, working_shifts, date, created_at, updated_at
+		SELECT id, user_id, type, subtype, inbound_rule, emergency_call, holiday_call, working_hours, working_shifts, date, created_at, updated_at
 		FROM track_items
 		WHERE user_id = ? AND date >= ? AND date <= ?
 		ORDER BY date DESC
@@ -113,6 +115,8 @@ func (r *TrackItemRepository) FindByDateRange(ctx context.Context, userID int, s
 			&item.ID,
 			&item.UserID,
 			&item.Type,
+			&item.Subtype,
+			&item.InboundRule,
 			&item.EmergencyCall,
 			&item.HolidayCall,
 			&item.WorkingHours,
@@ -137,14 +141,14 @@ func (r *TrackItemRepository) FindByDateRange(ctx context.Context, userID int, s
 // FindByID retrieves a specific track item by ID
 func (r *TrackItemRepository) FindByID(ctx context.Context, id int) (*models.TrackItem, error) {
 	query := `
-		SELECT id, user_id, type, emergency_call, holiday_call, working_hours, working_shifts, date, created_at, updated_at
+		SELECT id, user_id, type, subtype, inbound_rule, emergency_call, holiday_call, working_hours, working_shifts, date, created_at, updated_at
 		FROM track_items
 		WHERE id = ?
 	`
 
 	var item models.TrackItem
 	err := r.db.QueryRowContext(ctx, query, id).
-		Scan(&item.ID, &item.UserID, &item.Type, &item.EmergencyCall, &item.HolidayCall, &item.WorkingHours, &item.WorkingShifts, &item.Date, &item.CreatedAt, &item.UpdatedAt)
+		Scan(&item.ID, &item.UserID, &item.Type, &item.Subtype, &item.InboundRule, &item.EmergencyCall, &item.HolidayCall, &item.WorkingHours, &item.WorkingShifts, &item.Date, &item.CreatedAt, &item.UpdatedAt)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -160,11 +164,11 @@ func (r *TrackItemRepository) FindByID(ctx context.Context, id int) (*models.Tra
 func (r *TrackItemRepository) Update(ctx context.Context, item *models.TrackItem) error {
 	query := `
 		UPDATE track_items
-		SET type = ?, emergency_call = ?, holiday_call = ?, working_hours = ?, working_shifts = ?, date = ?, updated_at = datetime('now')
+		SET type = ?, subtype = ?, inbound_rule = ?, emergency_call = ?, holiday_call = ?, working_hours = ?, working_shifts = ?, date = ?, updated_at = datetime('now')
 		WHERE id = ?
 	`
 
-	result, err := r.db.ExecContext(ctx, query, item.Type, item.EmergencyCall, item.HolidayCall, item.WorkingHours, item.WorkingShifts, item.Date, item.ID)
+	result, err := r.db.ExecContext(ctx, query, item.Type, item.Subtype, item.InboundRule, item.EmergencyCall, item.HolidayCall, item.WorkingHours, item.WorkingShifts, item.Date, item.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update track item: %w", err)
 	}

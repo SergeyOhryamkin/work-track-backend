@@ -64,15 +64,21 @@ func (s *AuthService) Register(ctx context.Context, req *models.UserRegistration
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	sessionID, err := s.createSession(ctx, user.ID, meta)
+	refreshToken, err := util.GenerateRefreshToken(user.ID, s.jwtSecret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	sessionID, err := s.createSession(ctx, user.ID, refreshToken, meta)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
 	return &models.AuthResponse{
-		Token:     token,
-		User:      *user,
-		SessionID: sessionID,
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         *user,
+		SessionID:    sessionID,
 	}, nil
 }
 
@@ -99,15 +105,21 @@ func (s *AuthService) Login(ctx context.Context, req *models.UserLogin, meta *mo
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	sessionID, err := s.createSession(ctx, user.ID, meta)
+	refreshToken, err := util.GenerateRefreshToken(user.ID, s.jwtSecret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	sessionID, err := s.createSession(ctx, user.ID, refreshToken, meta)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
 	return &models.AuthResponse{
-		Token:     token,
-		User:      *user,
-		SessionID: sessionID,
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         *user,
+		SessionID:    sessionID,
 	}, nil
 }
 
@@ -128,17 +140,71 @@ func (s *AuthService) Logout(ctx context.Context, userID, sessionID int) error {
 	return nil
 }
 
-func (s *AuthService) createSession(ctx context.Context, userID int, meta *models.SessionMetadata) (int, error) {
+// RefreshToken generates a new access token and refresh token using a valid refresh token
+func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*models.AuthResponse, error) {
+	// Validate refresh token
+	claims, err := util.ValidateToken(refreshToken, s.jwtSecret)
+	if err != nil {
+		return nil, ErrUnauthorized
+	}
+
+	// Find active session with this refresh token
+	session, err := s.sessionRepo.FindByRefreshToken(ctx, refreshToken)
+	if err != nil {
+		if errors.Is(err, repository.ErrSessionNotFound) {
+			return nil, ErrSessionNotFound
+		}
+		return nil, fmt.Errorf("failed to find session: %w", err)
+	}
+
+	// Extra security check: ensure token belongs to the user in the session
+	if claims.UserID != session.UserID {
+		return nil, ErrUnauthorized
+	}
+
+	// Get user
+	user, err := s.userRepo.FindByID(ctx, session.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user: %w", err)
+	}
+
+	// Generate new tokens
+	newToken, err := util.GenerateToken(user.ID, s.jwtSecret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	newRefreshToken, err := util.GenerateRefreshToken(user.ID, s.jwtSecret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	// Update session with new refresh token
+	err = s.sessionRepo.UpdateRefreshToken(ctx, session.ID, newRefreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update session refresh token: %w", err)
+	}
+
+	return &models.AuthResponse{
+		Token:        newToken,
+		RefreshToken: newRefreshToken,
+		User:         *user,
+		SessionID:    session.ID,
+	}, nil
+}
+
+func (s *AuthService) createSession(ctx context.Context, userID int, refreshToken string, meta *models.SessionMetadata) (int, error) {
 	if meta == nil {
 		meta = &models.SessionMetadata{}
 	}
 
 	session := &models.UserSession{
-		UserID:    userID,
-		Device:    meta.Device,
-		Platform:  meta.Platform,
-		UserAgent: meta.UserAgent,
-		IPAddress: meta.IPAddress,
+		UserID:       userID,
+		RefreshToken: refreshToken,
+		Device:       meta.Device,
+		Platform:     meta.Platform,
+		UserAgent:    meta.UserAgent,
+		IPAddress:    meta.IPAddress,
 	}
 
 	id, err := s.sessionRepo.Create(ctx, session)

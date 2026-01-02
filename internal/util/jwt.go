@@ -24,7 +24,7 @@ func GenerateToken(userID int, secret string) (string, error) {
 	claims := &Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)), // Access token: 1 hour
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
@@ -33,6 +33,25 @@ func GenerateToken(userID int, secret string) (string, error) {
 	tokenString, err := token.SignedString([]byte(secret))
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
+	}
+
+	return tokenString, nil
+}
+
+// GenerateRefreshToken creates a new long-lived JWT refresh token
+func GenerateRefreshToken(userID int, secret string) (string, error) {
+	claims := &Claims{
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * 24 * time.Hour)), // Refresh token: 30 days
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return "", fmt.Errorf("failed to sign refresh token: %w", err)
 	}
 
 	return tokenString, nil
