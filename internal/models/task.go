@@ -81,6 +81,6 @@ type UpdateTrackItemRequest struct {
 
 // DateRangeQuery represents a query for track items within a date range
 type DateRangeQuery struct {
-	StartDate string `json:"start_date"` // ISO 8601 format: "2024-01-20"
-	EndDate   string `json:"end_date"`   // ISO 8601 format: "2024-01-25"
+	StartDate string `json:"start_date"` // ISO 8601 format: "2024-01-20T00:00:00Z"
+	EndDate   string `json:"end_date"`   // ISO 8601 format: "2024-01-25T23:59:59Z"
 }

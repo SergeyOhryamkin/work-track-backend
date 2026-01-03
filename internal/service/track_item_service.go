@@ -108,19 +108,16 @@ func (s *TrackItemService) GetUserTrackItems(ctx context.Context, userID int) ([
 
 // GetTrackItemsByDateRange retrieves track items for a user within a date range
 func (s *TrackItemService) GetTrackItemsByDateRange(ctx context.Context, userID int, startDateStr, endDateStr string) ([]models.TrackItem, error) {
-	// Parse dates (accept date-only format)
-	startDate, err := time.Parse("2006-01-02", startDateStr)
+	// Parse dates using ISO 8601 (RFC3339)
+	startDate, err := time.Parse(time.RFC3339, startDateStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid start date format, use YYYY-MM-DD: %w", err)
+		return nil, fmt.Errorf("invalid start date format, use ISO 8601 (RFC3339): %w", err)
 	}
 
-	endDate, err := time.Parse("2006-01-02", endDateStr)
+	endDate, err := time.Parse(time.RFC3339, endDateStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid end date format, use YYYY-MM-DD: %w", err)
+		return nil, fmt.Errorf("invalid end date format, use ISO 8601 (RFC3339): %w", err)
 	}
-
-	// Set end date to end of day
-	endDate = endDate.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
 
 	items, err := s.trackItemRepo.FindByDateRange(ctx, userID, startDate, endDate)
 	if err != nil {

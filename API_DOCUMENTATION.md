@@ -125,7 +125,7 @@ http://localhost:8080/api
   - `400 Bad Request` on validation/date parse errors.
 
 **GET** `/track-items`
-- Optional query: `start_date=YYYY-MM-DD&end_date=YYYY-MM-DD` (end is inclusive, extended to end-of-day).
+- Optional query: `start_date=2024-01-20T00:00:00Z&end_date=2024-01-25T23:59:59Z` (ISO 8601 format).
 - Responses:
   - `200 OK` with array of caller’s items.
 
@@ -275,7 +275,7 @@ async function listTrackItems(token, range) {
 ```
 
 ## Notes
-- Dates: send RFC3339 for `date` (`2024-01-20T09:00:00Z`). Date-range queries use `YYYY-MM-DD`.
+- Dates: Always use ISO 8601 (RFC3339) for all date and time fields (e.g., `2024-01-20T09:00:00Z`). This applies to creation, updates, and date-range queries.
 - Ownership: all track-item routes are scoped to the authenticated user; 403 is returned if accessing another user’s item.
 - Config: set `JWT_SECRET` and `DB_PATH` (.env). Default DB is SQLite file.
 - Session Tracking: Every login/register creates a session record with:
