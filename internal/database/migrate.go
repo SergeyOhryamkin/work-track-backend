@@ -13,6 +13,17 @@ import (
 func RunMigrations(db *sql.DB, migrationsPath string) error {
 	log.Println("Running database migrations...")
 
+	// Create schema_migrations table if it doesn't exist
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			version TEXT PRIMARY KEY,
+			applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create schema_migrations table: %w", err)
+	}
+
 	// Read migration files
 	files, err := os.ReadDir(migrationsPath)
 	if err != nil {
@@ -36,6 +47,18 @@ func RunMigrations(db *sql.DB, migrationsPath string) error {
 
 	// Apply each migration
 	for _, filename := range migrationFiles {
+		// Check if migration has already been applied
+		var exists bool
+		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = ?)", filename).Scan(&exists)
+		if err != nil {
+			return fmt.Errorf("failed to check migration status for %s: %w", filename, err)
+		}
+
+		if exists {
+			log.Printf("⊘ Skipping already applied migration: %s", filename)
+			continue
+		}
+
 		log.Printf("Applying migration: %s", filename)
 		
 		filePath := filepath.Join(migrationsPath, filename)
@@ -47,6 +70,11 @@ func RunMigrations(db *sql.DB, migrationsPath string) error {
 		// Execute the migration SQL
 		if _, err := db.Exec(string(content)); err != nil {
 			return fmt.Errorf("failed to execute migration %s: %w", filename, err)
+		}
+
+		// Record that migration has been applied
+		if _, err := db.Exec("INSERT INTO schema_migrations (version) VALUES (?)", filename); err != nil {
+			return fmt.Errorf("failed to record migration %s: %w", filename, err)
 		}
 
 		log.Printf("✓ Migration applied: %s", filename)
