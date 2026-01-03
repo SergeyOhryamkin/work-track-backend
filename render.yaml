@@ -1,7 +1,7 @@
 services:
   - type: web
     name: work-track-api
-    env: docker
+    runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
     envVars:
@@ -9,19 +9,13 @@ services:
         value: 8080
       - key: ENV
         value: production
-      - key: DB_HOST
-        sync: false
-      - key: DB_PORT
-        value: 5432
-      - key: DB_USER
-        sync: false
-      - key: DB_PASSWORD
-        sync: false
-      - key: DB_NAME
-        sync: false
-      - key: DB_SSLMODE
-        value: require
+      - key: DB_PATH
+        value: /opt/render/project/src/data/worktrack.db
       - key: JWT_SECRET
         generateValue: true
       - key: ALLOWED_ORIGINS
         value: https://your-frontend-url.com
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

@@ -1,22 +1,22 @@
 # Work Track Backend
 
-A robust Go backend for a work tracking application, featuring JWT authentication, PostgreSQL integration, and a clean architecture.
+A robust Go backend for a work tracking application, featuring JWT authentication, SQLite storage, and a clean architecture.
 
 ## Features
 
 - **Authentication**: Secure user registration and login with JWT tokens
 - **Work Tracking**: Track daily work items, hours, shifts, and special conditions (emergency/holiday calls)
 - **RESTful API**: Clean, resource-oriented API design
-- **PostgreSQL**: Reliable data persistence with `pgx` driver
+- **SQLite**: Reliable local data persistence
 - **Docker**: Containerized for easy development and deployment
 - **CI/CD**: Automated testing and build pipeline with GitHub Actions
 
 ## Tech Stack
 
-- **Language**: Go 1.21+
+- **Language**: Go 1.25
 - **Router**: [Chi](https://github.com/go-chi/chi)
-- **Database**: PostgreSQL
-- **Driver**: [pgx](https://github.com/jackc/pgx)
+- **Database**: SQLite
+- **Driver**: [go-sqlite3](https://github.com/mattn/go-sqlite3)
 - **Auth**: JWT (JSON Web Tokens)
 - **Config**: [godotenv](https://github.com/joho/godotenv)
 - **Testing**: Go standard library `testing` package

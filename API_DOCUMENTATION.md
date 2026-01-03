@@ -14,6 +14,13 @@ http://localhost:8080/api
 
 ## Endpoints
 
+### Health Check
+
+**GET** `/health`
+- Simple health check endpoint.
+- Responses:
+  - `200 OK` (body: `OK`)
+
 ### Auth
 
 **POST** `/auth/register`
@@ -30,6 +37,7 @@ http://localhost:8080/api
   ```json
   {
     "token": "<jwt>",
+    "refresh_token": "<refresh_jwt>",
     "user": {
       "id": 1,
       "login": "johndoe",
@@ -109,13 +117,15 @@ http://localhost:8080/api
 ### Track Items (all require `Authorization: Bearer <token>`)
 
 **POST** `/track-items`
-- Body (all required):
+- Body:
 ```json
 {
-  "type": "regular",
+  "type": "outbound", // "shift_lead", "inbound", "outbound"
+  "subtype": "regular", // optional, only for outbound: "regular", "extra"
+  "inbound_rule": "101", // optional, only for inbound: "101"-"107"
   "emergency_call": false,
   "holiday_call": false,
-  "working_hours": 8.5,
+  "working_hours": 6.5,
   "working_shifts": 1.0,
   "date": "2024-01-20T09:00:00Z" // RFC3339
 }
@@ -139,7 +149,8 @@ http://localhost:8080/api
 - Body: all fields optional; send only what you change.
 ```json
 {
-  "type": "overtime",
+  "type": "inbound",
+  "inbound_rule": "103",
   "emergency_call": true,
   "holiday_call": false,
   "working_hours": 10,
@@ -176,10 +187,12 @@ http://localhost:8080/api
 {
   "id": 1,
   "user_id": 1,
-  "type": "regular",
+  "type": "outbound",
+  "subtype": "regular",
+  "inbound_rule": "",
   "emergency_call": false,
   "holiday_call": false,
-  "working_hours": 8.5,
+  "working_hours": 6.5,
   "working_shifts": 1.0,
   "date": "2024-01-20T09:00:00Z",
   "created_at": "2024-01-20T10:00:00Z",
@@ -218,7 +231,7 @@ SESSION_ID=$(echo $RESPONSE | jq -r .session_id)
 # create track item
 curl -X POST http://localhost:8080/api/track-items \
   -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
-  -d '{"type":"regular","emergency_call":false,"holiday_call":false,"working_hours":8,"working_shifts":1,"date":"2024-01-20T09:00:00Z"}'
+  -d '{"type":"outbound","subtype":"regular","emergency_call":false,"holiday_call":false,"working_hours":6.5,"working_shifts":1,"date":"2024-01-20T09:00:00Z"}'
 
 # logout (completes the session)
 curl -X POST http://localhost:8080/api/auth/logout \
@@ -237,7 +250,7 @@ async function register(payload) {
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw await res.json();
-  return res.json(); // { token, user, session_id }
+  return res.json(); // { token, refresh_token, user, session_id }
 }
 
 async function login(payload) {
@@ -247,7 +260,7 @@ async function login(payload) {
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw await res.json();
-  return res.json(); // { token, user, session_id }
+  return res.json(); // { token, refresh_token, user, session_id }
 }
 
 async function logout(token, sessionId) {

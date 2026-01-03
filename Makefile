@@ -35,17 +35,17 @@ docker-down: ## Stop services with Docker Compose
 docker-logs: ## View Docker Compose logs
 	docker-compose logs -f
 
-migrate-up: ## Run database migrations up
-	@echo "Running migrations..."
-	@docker-compose exec -T postgres psql -U postgres -d worktrack < migrations/000001_create_users_table.up.sql
-	@docker-compose exec -T postgres psql -U postgres -d worktrack < migrations/000002_create_tasks_table.up.sql
-	@echo "Migrations completed"
+migrate-up: ## Run database migrations up (not needed for SQLite as it runs on start)
+	@echo "Migrations are handled automatically on application startup"
 
-migrate-down: ## Run database migrations down
-	@echo "Rolling back migrations..."
-	@docker-compose exec -T postgres psql -U postgres -d worktrack < migrations/000002_create_tasks_table.down.sql
-	@docker-compose exec -T postgres psql -U postgres -d worktrack < migrations/000001_create_users_table.down.sql
-	@echo "Rollback completed"
+migrate-down: ## Run database migrations down (not implemented for SQLite)
+	@echo "Manual rollback not implemented for SQLite"
+
+db-reset: ## Reset the SQLite database (Deletes the .db file)
+	@echo "Warning: This will delete all data. Are you sure? [y/N] " && read ans && [ $${ans:-N} = y ]
+	rm -f worktrack.db worktrack.db-shm worktrack.db-wal
+	rm -f data/worktrack.db data/worktrack.db-shm data/worktrack.db-wal
+	@echo "Database deleted. It will be recreated on next startup."
 
 deps: ## Download dependencies
 	go mod download

@@ -28,11 +28,11 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 // Create inserts a new user into the database
 func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 	query := `
-		INSERT INTO users (first_name, last_name, avatar, login, password_hash, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+		INSERT INTO users (first_name, last_name, avatar, login, email, password_hash, registration_time, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
 	`
 
-	result, err := r.db.ExecContext(ctx, query, user.FirstName, user.LastName, user.Avatar, user.Login, user.PasswordHash)
+	result, err := r.db.ExecContext(ctx, query, user.FirstName, user.LastName, user.Avatar, user.Login, user.Email, user.PasswordHash)
 	if err != nil {
 		// Check for unique constraint violation
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -48,8 +48,8 @@ func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 	user.ID = int(id)
 
 	// Fetch created_at and updated_at
-	err = r.db.QueryRowContext(ctx, "SELECT created_at, updated_at FROM users WHERE id = ?", user.ID).
-		Scan(&user.CreatedAt, &user.UpdatedAt)
+	err = r.db.QueryRowContext(ctx, "SELECT registration_time, created_at, updated_at FROM users WHERE id = ?", user.ID).
+		Scan(&user.RegistrationTime, &user.CreatedAt, &user.UpdatedAt)
 
 	return nil
 }
@@ -57,14 +57,14 @@ func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 // FindByLogin retrieves a user by login
 func (r *UserRepository) FindByLogin(ctx context.Context, login string) (*models.User, error) {
 	query := `
-		SELECT id, first_name, last_name, avatar, login, password_hash, created_at, updated_at
+		SELECT id, first_name, last_name, avatar, login, email, password_hash, registration_time, created_at, updated_at
 		FROM users
 		WHERE login = ?
 	`
 
 	var user models.User
 	err := r.db.QueryRowContext(ctx, query, login).
-		Scan(&user.ID, &user.FirstName, &user.LastName, &user.Avatar, &user.Login, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
+		Scan(&user.ID, &user.FirstName, &user.LastName, &user.Avatar, &user.Login, &user.Email, &user.PasswordHash, &user.RegistrationTime, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -79,14 +79,14 @@ func (r *UserRepository) FindByLogin(ctx context.Context, login string) (*models
 // FindByID retrieves a user by ID
 func (r *UserRepository) FindByID(ctx context.Context, id int) (*models.User, error) {
 	query := `
-		SELECT id, first_name, last_name, avatar, login, password_hash, created_at, updated_at
+		SELECT id, first_name, last_name, avatar, login, email, password_hash, registration_time, created_at, updated_at
 		FROM users
 		WHERE id = ?
 	`
 
 	var user models.User
 	err := r.db.QueryRowContext(ctx, query, id).
-		Scan(&user.ID, &user.FirstName, &user.LastName, &user.Avatar, &user.Login, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
+		Scan(&user.ID, &user.FirstName, &user.LastName, &user.Avatar, &user.Login, &user.Email, &user.PasswordHash, &user.RegistrationTime, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

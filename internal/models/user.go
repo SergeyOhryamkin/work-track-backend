@@ -6,14 +6,16 @@ import (
 
 // User represents a user in the system
 type User struct {
-	ID           int       `json:"id"`
-	FirstName    string    `json:"first_name"`
-	LastName     string    `json:"last_name"`
-	Avatar       string    `json:"avatar,omitempty"` // URL or path to avatar image
-	Login        string    `json:"login"`
-	PasswordHash string    `json:"-"` // Never expose password hash in JSON
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID               int       `json:"id"`
+	FirstName        string    `json:"first_name"`
+	LastName         string    `json:"last_name"`
+	Avatar           string    `json:"avatar,omitempty"` // URL or path to avatar image
+	Login            string    `json:"login"`
+	Email            string    `json:"email,omitempty"`
+	PasswordHash     string    `json:"-"` // Never expose password hash in JSON
+	RegistrationTime time.Time `json:"registration_time"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 // UserRegistration represents the data needed to register a new user
