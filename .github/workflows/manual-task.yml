@@ -1,0 +1,33 @@
+name: Manual Backend Task
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run on server"
+        required: false
+        default: "master"
+      dry_run:
+        description: "Run in dry-run mode"
+        required: false
+        default: "true"
+
+jobs:
+  run-manual-task:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run manual task on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script_stop: true
+          script: |
+            cd ~/work-track/backend
+            git fetch origin
+            git checkout ${{ inputs.branch }}
+            git pull origin ${{ inputs.branch }}
+            DB_PATH=./worktrack.db go run ./cmd/manual-task --dry-run=${{ inputs.dry_run }}
