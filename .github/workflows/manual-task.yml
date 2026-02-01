@@ -34,5 +34,5 @@ jobs:
               -v "$PWD":/app \
               -w /app \
               -e DB_PATH=./worktrack.db \
-              golang:1.21 \
+              golang:1.25 \
               go run ./cmd/manual-task --dry-run=${{ inputs.dry_run }}
