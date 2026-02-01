@@ -15,6 +15,21 @@ type TrackItemService struct {
 	trackItemRepo *repository.TrackItemRepository
 }
 
+func inboundHoursToShifts(hours float64) (float64, error) {
+	switch hours {
+	case 13.0:
+		return 2.0, nil
+	case 11.0:
+		return 1.69, nil
+	case 10.0:
+		return 1.5, nil
+	case 6.5:
+		return 1.0, nil
+	default:
+		return hours / 6.5, nil
+	}
+}
+
 // NewTrackItemService creates a new track item service
 func NewTrackItemService(trackItemRepo *repository.TrackItemRepository) *TrackItemService {
 	return &TrackItemService{
@@ -43,7 +58,7 @@ func (s *TrackItemService) CreateTrackItem(ctx context.Context, userID int, req 
 	case models.WorkTypeShiftLead:
 		// Non-call shift: no required inputs, lasts 8 hours
 		workingHours = 8.0
-		workingShifts = workingHours / models.HoursPerShift
+		workingShifts = workingHours / models.HoursPerShiftDefault
 	case models.WorkTypeInbound:
 		// Inbound: requires inbound rule
 		if req.InboundRule == "" {
@@ -61,7 +76,10 @@ func (s *TrackItemService) CreateTrackItem(ctx context.Context, userID int, req 
 		} else {
 			workingHours = rule.Workday
 		}
-		workingShifts = workingHours / models.HoursPerShift
+		workingShifts, err = inboundHoursToShifts(workingHours)
+		if err != nil {
+			return nil, err
+		}
 
 	case models.WorkTypeOutbound:
 		// Outbound: requires hours and subtype
@@ -71,7 +89,7 @@ func (s *TrackItemService) CreateTrackItem(ctx context.Context, userID int, req 
 		if req.Subtype == "" {
 			return nil, errors.New("subtype (regular/extra) is required for outbound shifts")
 		}
-		workingShifts = workingHours / models.HoursPerShift
+		workingShifts = workingHours / models.HoursPerShiftDefault
 	default:
 		return nil, fmt.Errorf("invalid work type: %s", req.Type)
 	}
@@ -209,7 +227,7 @@ func (s *TrackItemService) UpdateTrackItem(ctx context.Context, userID, itemID i
 	switch item.Type {
 	case models.WorkTypeShiftLead:
 		item.WorkingHours = 8.0
-		item.WorkingShifts = item.WorkingHours / models.HoursPerShift
+		item.WorkingShifts = item.WorkingHours / models.HoursPerShiftDefault
 	case models.WorkTypeInbound:
 		if rule, ok := models.InboundRules[item.InboundRule]; ok {
 			if item.HolidayCall {
@@ -218,12 +236,15 @@ func (s *TrackItemService) UpdateTrackItem(ctx context.Context, userID, itemID i
 				item.WorkingHours = rule.Workday
 			}
 		}
-		item.WorkingShifts = item.WorkingHours / models.HoursPerShift
+		item.WorkingShifts, err = inboundHoursToShifts(item.WorkingHours)
+		if err != nil {
+			return nil, err
+		}
 	case models.WorkTypeOutbound:
 		if req.WorkingHours != nil {
 			item.WorkingHours = *req.WorkingHours
 		}
-		item.WorkingShifts = item.WorkingHours / models.HoursPerShift
+		item.WorkingShifts = item.WorkingHours / models.HoursPerShiftDefault
 	}
 
 	if req.Date != nil {

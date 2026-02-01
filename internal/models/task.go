@@ -37,7 +37,7 @@ var InboundRules = map[string]InboundRuleHours{
 	"107": {Workday: 10.0, Holiday: 0},
 }
 
-const HoursPerShift = 6.5
+const HoursPerShiftDefault = 6.0
 
 // TrackItem represents a work tracking entry in the system
 type TrackItem struct {
