@@ -106,6 +106,36 @@ func (s *TrackItemService) GetUserTrackItems(ctx context.Context, userID int) ([
 	return items, nil
 }
 
+// GetTrackItemsSummaryByDateRange aggregates shift totals for a user within a date range
+func (s *TrackItemService) GetTrackItemsSummaryByDateRange(ctx context.Context, userID int, startDateStr, endDateStr string) (*models.TrackItemSummary, error) {
+	items, err := s.GetTrackItemsByDateRange(ctx, userID, startDateStr, endDateStr)
+	if err != nil {
+		return nil, err
+	}
+
+	summary := &models.TrackItemSummary{}
+	for _, item := range items {
+		switch item.Type {
+		case models.WorkTypeShiftLead:
+			summary.ShiftLeadShifts += item.WorkingShifts
+		case models.WorkTypeInbound:
+			summary.InboundShifts += item.WorkingShifts
+		case models.WorkTypeOutbound:
+			summary.OutboundShifts += item.WorkingShifts
+		}
+
+		if item.EmergencyCall {
+			summary.EmergencyCallShifts += item.WorkingShifts
+		}
+		if item.HolidayCall {
+			summary.HolidayCallShifts += item.WorkingShifts
+		}
+	}
+
+	summary.TotalShifts = summary.ShiftLeadShifts + summary.InboundShifts + summary.OutboundShifts
+	return summary, nil
+}
+
 // GetTrackItemsByDateRange retrieves track items for a user within a date range
 func (s *TrackItemService) GetTrackItemsByDateRange(ctx context.Context, userID int, startDateStr, endDateStr string) ([]models.TrackItem, error) {
 	// Parse dates using ISO 8601 (RFC3339)

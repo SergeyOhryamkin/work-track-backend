@@ -84,3 +84,13 @@ type DateRangeQuery struct {
 	StartDate string `json:"start_date"` // ISO 8601 format: "2024-01-20T00:00:00Z"
 	EndDate   string `json:"end_date"`   // ISO 8601 format: "2024-01-25T23:59:59Z"
 }
+
+// TrackItemSummary represents aggregated shift totals for a date range
+type TrackItemSummary struct {
+	ShiftLeadShifts     float64 `json:"shift_lead_shifts"`
+	InboundShifts       float64 `json:"inbound_shifts"`
+	OutboundShifts      float64 `json:"outbound_shifts"`
+	TotalShifts         float64 `json:"total_shifts"`
+	EmergencyCallShifts float64 `json:"emergency_call_shifts"`
+	HolidayCallShifts   float64 `json:"holiday_call_shifts"`
+}

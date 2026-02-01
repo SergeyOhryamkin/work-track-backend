@@ -89,6 +89,7 @@ func main() {
 		r.Route("/track-items", func(r chi.Router) {
 			r.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
 			r.Get("/", trackItemHandler.ListTrackItems)
+			r.Get("/summary", trackItemHandler.GetTrackItemsSummary)
 			r.Post("/", trackItemHandler.CreateTrackItem)
 			r.Get("/{id}", trackItemHandler.GetTrackItem)
 			r.Put("/{id}", trackItemHandler.UpdateTrackItem)

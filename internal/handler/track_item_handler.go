@@ -56,6 +56,30 @@ func (h *TrackItemHandler) ListTrackItems(w http.ResponseWriter, r *http.Request
 	respondWithJSON(w, http.StatusOK, items)
 }
 
+// GetTrackItemsSummary retrieves aggregated shift totals for the authenticated user
+func (h *TrackItemHandler) GetTrackItemsSummary(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	startDate := r.URL.Query().Get("start_date")
+	endDate := r.URL.Query().Get("end_date")
+	if startDate == "" || endDate == "" {
+		respondWithError(w, http.StatusBadRequest, "start_date and end_date are required")
+		return
+	}
+
+	summary, err := h.trackItemService.GetTrackItemsSummaryByDateRange(r.Context(), userID, startDate, endDate)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, summary)
+}
+
 // CreateTrackItem creates a new track item
 func (h *TrackItemHandler) CreateTrackItem(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserIDFromContext(r.Context())

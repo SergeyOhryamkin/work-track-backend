@@ -139,6 +139,23 @@ http://localhost:8080/api
 - Responses:
   - `200 OK` with array of caller’s items.
 
+**GET** `/track-items/summary`
+- Query (required): `start_date=2024-01-20T00:00:00Z&end_date=2024-01-25T23:59:59Z` (RFC3339).
+- Returns sums of shifts by type and total (shift lead + inbound + outbound).
+- Emergency and holiday shifts are counted separately and are **not** included in `total_shifts`.
+- Responses:
+  - `200 OK`
+  ```json
+  {
+    "shift_lead_shifts": 2,
+    "inbound_shifts": 3.5,
+    "outbound_shifts": 1,
+    "total_shifts": 6.5,
+    "emergency_call_shifts": 1.5,
+    "holiday_call_shifts": 0
+  }
+  ```
+
 **GET** `/track-items/{id}`
 - Responses:
   - `200 OK` with the item.
@@ -181,6 +198,16 @@ http://localhost:8080/api
   "login": "johndoe",
   "created_at": "2024-01-20T10:00:00Z",
   "updated_at": "2024-01-20T10:00:00Z"
+}
+
+// TrackItemSummary
+{
+  "shift_lead_shifts": 2,
+  "inbound_shifts": 3.5,
+  "outbound_shifts": 1,
+  "total_shifts": 6.5,
+  "emergency_call_shifts": 1.5,
+  "holiday_call_shifts": 0
 }
 
 // TrackItem
@@ -232,6 +259,10 @@ SESSION_ID=$(echo $RESPONSE | jq -r .session_id)
 curl -X POST http://localhost:8080/api/track-items \
   -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
   -d '{"type":"outbound","subtype":"regular","emergency_call":false,"holiday_call":false,"working_hours":6.5,"working_shifts":1,"date":"2024-01-20T09:00:00Z"}'
+
+# track items summary (date range)
+curl -X GET "http://localhost:8080/api/track-items/summary?start_date=2024-01-01T00:00:00Z&end_date=2024-01-31T23:59:59Z" \
+  -H "Authorization: Bearer $TOKEN"
 
 # logout (completes the session)
 curl -X POST http://localhost:8080/api/auth/logout \
