@@ -43,7 +43,7 @@ func inboundHoursToShifts(hours float64) float64 {
 func recalcItem(item trackItemRow) (float64, float64, error) {
 	switch item.Type {
 	case models.WorkTypeShiftLead:
-		hours := 8.0
+		hours := 11.0
 		return hours, hours / models.HoursPerShiftDefault, nil
 	case models.WorkTypeInbound:
 		ruleKey := item.InboundRule.String

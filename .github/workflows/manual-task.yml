@@ -30,4 +30,9 @@ jobs:
             git fetch origin
             git checkout ${{ inputs.branch }}
             git pull origin ${{ inputs.branch }}
-            DB_PATH=./worktrack.db go run ./cmd/manual-task --dry-run=${{ inputs.dry_run }}
+            docker run --rm \
+              -v "$PWD":/app \
+              -w /app \
+              -e DB_PATH=./worktrack.db \
+              golang:1.21 \
+              go run ./cmd/manual-task --dry-run=${{ inputs.dry_run }}

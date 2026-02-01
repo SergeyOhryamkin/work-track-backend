@@ -56,8 +56,8 @@ func (s *TrackItemService) CreateTrackItem(ctx context.Context, userID int, req 
 
 	switch req.Type {
 	case models.WorkTypeShiftLead:
-		// Non-call shift: no required inputs, lasts 8 hours
-		workingHours = 8.0
+		// Non-call shift: no required inputs, lasts 11 hours
+		workingHours = 11.0
 		workingShifts = workingHours / models.HoursPerShiftDefault
 	case models.WorkTypeInbound:
 		// Inbound: requires inbound rule
@@ -226,7 +226,7 @@ func (s *TrackItemService) UpdateTrackItem(ctx context.Context, userID, itemID i
 	// Recalculate derived fields based on updated Type and rules
 	switch item.Type {
 	case models.WorkTypeShiftLead:
-		item.WorkingHours = 8.0
+		item.WorkingHours = 11.0
 		item.WorkingShifts = item.WorkingHours / models.HoursPerShiftDefault
 	case models.WorkTypeInbound:
 		if rule, ok := models.InboundRules[item.InboundRule]; ok {
